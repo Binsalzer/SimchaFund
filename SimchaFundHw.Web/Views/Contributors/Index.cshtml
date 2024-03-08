@@ -14,7 +14,7 @@
                 <button class="btn btn-danger" id="clear">Clear</button>
             </div>
             <div class="col-md-4">
-                <h3>Total: $310.00</h3>
+                <h3>Total: @Model.TotalBalance.ToString("C")</h3>
             </div>
         </div>
         <div class="table-responsive">
@@ -32,20 +32,21 @@
                 {
                     <tr>
                         <td>
-                            <button class="btn btn-success deposit-button" data-contribid="@p.Id">Deposit</button>
+                            <button class="btn btn-success deposit-button"  data-contribname="@p.FirstName @p.LastName"  data-contribid="@p.Id">Deposit</button>
                         </td>
                         <td>@p.FirstName @p.LastName</td>
                         <td>
                             @p.PhoneNumber
                         </td>
                         <td>
-                            @p.Balance
+                            @p.Balance.ToString("C")
+
                         </td>
                         <td style="text-align: center;">
                             <i style="font-size:30px" class="@(p.AlwaysInclude ? "bi bi-check" : "")"></i>
                         </td>
                         <td>
-                            <a href="/contributors/history?contribid=2033" class="btn btn-primary">Show History</a>
+                            <a href="/contributors/history?id=@p.Id" class="btn btn-primary">Show History</a>
                             <button data-first-name="John" data-last-name="Doe"
                                     data-cell="875865765" data-id="2033" data-always-include="False" data-date="2024-03-04"
                                     class="btn btn-danger edit-contrib">
@@ -83,7 +84,7 @@
                                 </div>
                                 <div class="form-group col-md-6" id="initialDepositDiv">
                                     <label class="form-label">Initial Deposit</label>
-                                    <input type="text" class="form-control" name="ammount" placeholder="Initial Deposit">
+                                    <input type="text" class="form-control" name="amount" placeholder="Initial Deposit">
                                 </div>
                             </div>
                             <div class="row mt-3">
@@ -112,11 +113,11 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Deposit for <span id="deposit-name"></span></h5>
+                        <h5 class="modal-title" id="deposit-name" name="name">Deposit for <span></span></h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form method="POST" action="/contributors/deposit">
-                        <input type="hidden" name="contributorId" />
+                        <input type="hidden" value= name="personId" />
                         <div class="modal-body">
                             <div class="form-group">
                                 <label>Amount</label>

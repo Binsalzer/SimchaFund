@@ -13,8 +13,9 @@ namespace SimchaFundHw.Web.Controllers
         public IActionResult Index()
         {
             Manager mgr = new(_connection);
-            
-            return View();
+            var vm = new IndexViewModel {Simchas=mgr.GetAllSimchas(),
+                TotalPeopleInDataBaseCount=mgr.GetAmmountOfPeopleInDB() };
+            return View(vm);
         }
 
     }

@@ -1,6 +1,6 @@
 $(() => {
     const addPersonModal = new bootstrap.Modal($("#add-person")[0])
-    $('#new-person').on('click', function() {
+    $('#new-person').on('click', function () {
         addPersonModal.show()
     })
 
@@ -8,7 +8,19 @@ $(() => {
     const depositModal = new bootstrap.Modal($("#deposit-modal")[0])
     $('.btn-success').on('click', function () {
         depositModal.show()
+        const row = $(this)
+        const name = row.attr('data-contribname')
+        const title = $('#deposit-modal').find('.modal-title')
+        title.append(name)
+        console.log(name)
+        const id = row.attr('data-contribid')
+        $('#deposit-modal').setAttribute('value', id)
+        
+        console.log(id)
     })
+
+
+
 
 
 })

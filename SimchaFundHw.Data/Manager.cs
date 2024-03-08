@@ -4,6 +4,7 @@ using System.Data.SqlClient;
 using System.Data.SqlTypes;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -24,10 +25,28 @@ namespace SimchaFundHw.Data
     {
         public int Id { get; set; }
         public int PersonId { get; set; }
-        public decimal Ammount { get; set; }
+        public decimal Amount { get; set; }
         public DateTime Date { get; set; }
     }
 
+
+    public class HistoryEvent
+    {
+        public decimal Amount { get; set; }
+        public DateTime Date { get; set; }
+        public string Action { get; set; }
+        public bool IsDeposit { get; set; }
+        public int ContributorCount { get; set; }
+    }
+
+    public class Simcha
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public DateTime Date { get; set; }
+        public decimal Total { get; set; }
+        public int ContributorCount { get; set; }
+    }
 
     public class Manager
     {
@@ -49,8 +68,14 @@ namespace SimchaFundHw.Data
                                 WHERE p.Id=@id";
             cmd.Parameters.AddWithValue("@id", id);
             con.Open();
-            
-            return (decimal)cmd.ExecuteScalar();
+            var reader = cmd.ExecuteReader();
+
+            if (!reader.Read())
+            {
+                return 0;
+            }
+
+            return reader.GetOrNull<decimal>("Total");
         }
 
         public decimal GetTotalContributions(int id)
@@ -64,13 +89,14 @@ namespace SimchaFundHw.Data
             cmd.Parameters.AddWithValue("@id", id);
             con.Open();
             var reader = cmd.ExecuteReader();
-            var total = reader.GetOrNull<decimal>("Total");
-            if(total==null)
+
+            if (!reader.Read())
             {
                 return 0;
             }
 
-            return total;
+            return reader.GetOrNull<decimal>("Total");
+
         }
 
         public decimal GetTotalBalanceForPerson(int id)
@@ -88,7 +114,7 @@ namespace SimchaFundHw.Data
 
             con.Open();
             var reader = cmd.ExecuteReader();
-            while(reader.Read())
+            while (reader.Read())
             {
                 people.Add(new()
                 {
@@ -98,12 +124,12 @@ namespace SimchaFundHw.Data
                     PhoneNumber = (string)reader["PhoneNumber"],
                     CreatedDate = (DateTime)reader["CreatedDate"],
                     AlwaysInclude = (bool)reader["AlwaysInclude"]
-                }); 
+                });
             }
 
-            foreach(Person p in people)
+            foreach (Person p in people)
             {
-                GetTotalBalanceForPerson(p.Id);
+                p.Balance = GetTotalBalanceForPerson(p.Id);
             }
             return people;
         }
@@ -130,11 +156,161 @@ namespace SimchaFundHw.Data
             cmd.CommandText = @"INSERT INTO Deposits
                                 VALUES(@personId, @ammount, @date)";
             cmd.Parameters.AddWithValue("@personId", deposit.PersonId);
-            cmd.Parameters.AddWithValue("@ammount", deposit.Ammount);
+            cmd.Parameters.AddWithValue("@ammount", deposit.Amount);
             cmd.Parameters.AddWithValue("@date", DateTime.Now);
             con.Open();
             cmd.ExecuteNonQuery();
         }
+
+        private List<HistoryEvent> GetAllContributionsById(int id)
+        {
+            List<HistoryEvent> events = new();
+            SqlConnection con = new(_connection);
+            var cmd = con.CreateCommand();
+            cmd.CommandText = @"SELECT * FROM Contributions c
+                                JOIN Simcha s
+                                ON c.SimchaId=s.Id
+                                WHERE PersonId =@id";
+            cmd.Parameters.AddWithValue("@id", id);
+            con.Open();
+            var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                events.Add(new()
+                {
+                    Amount = (decimal)reader["Ammount"],
+                    Date = (DateTime)reader["Date"],
+                    Action = $"Contribution for the {(string)reader["Name"]}",
+                    IsDeposit = false
+                });
+            }
+            return events;
+        }
+
+        private List<HistoryEvent> AddAllDepositsToContributionsListById(int id, List<HistoryEvent> events)
+        {
+            SqlConnection con = new(_connection);
+            var cmd = con.CreateCommand();
+            cmd.CommandText = @"SELECT d.* FROM Deposits d
+                                JOIN People p
+                                ON p.Id=d.PersonId
+                                WHERE PersonId=@id";
+            cmd.Parameters.AddWithValue("@id", id);
+            con.Open();
+            var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                events.Add(new()
+                {
+                    Amount = (decimal)reader["Ammount"],
+                    Date = (DateTime)reader["Date"],
+                    Action = "Deposit",
+                    IsDeposit = true
+                }); ;
+            }
+            return events;
+        }
+
+        public List<HistoryEvent> GetHistoryByPersonId(int id)
+        {
+            var events = GetAllContributionsById(id);
+            events = AddAllDepositsToContributionsListById(id, events);
+
+
+
+            return events.OrderByDescending(h => h.Date).ToList();
+        }
+
+        public string GetFullNameForPersonId(int id)
+        {
+            SqlConnection con = new(_connection);
+            var cmd = con.CreateCommand();
+            cmd.CommandText = @"SELECT FirstName, LastName FROM People
+                                WHERE Id=@id";
+            cmd.Parameters.AddWithValue("@id", id);
+            con.Open();
+            var reader = cmd.ExecuteReader();
+            if (!reader.Read())
+            {
+                return null;
+            }
+            return $"{(string)reader["FirstName"]} {(string)reader["LastName"]}";
+        }
+
+        public decimal GetTotalOfAllDeposits()
+        {
+            SqlConnection con = new(_connection);
+            var cmd = con.CreateCommand();
+            cmd.CommandText = "SELECT SUM(Ammount) as Total FROM Deposits";
+            con.Open();
+            var reader = cmd.ExecuteReader();
+            if (!reader.Read())
+            {
+                return 0;
+            }
+            return reader.GetOrNull<decimal>("Total");
+        }
+
+        public decimal GetTotalOfAllContributions()
+        {
+            SqlConnection con = new(_connection);
+            var cmd = con.CreateCommand();
+            cmd.CommandText = "SELECT SUM(Ammount) as Total FROM Contributions";
+            con.Open();
+            var reader = cmd.ExecuteReader();
+            if (!reader.Read())
+            {
+                return 0;
+            }
+            return reader.GetOrNull<decimal>("Total");
+        }
+        public decimal GetTotalBalanceForFund()
+        {
+            return GetTotalOfAllDeposits() - GetTotalOfAllContributions();
+        }
+
+        public List<Simcha> GetAllSimchas()
+        {
+            List<Simcha> simchas = new();
+            SqlConnection con = new(_connection);
+            var cmd = con.CreateCommand();
+            cmd.CommandText = @"SELECT s.*, SUM(c.Ammount) as 'Total', COUNT(c.PersonId) as ContributorCount FROM Simcha s
+                                JOIN Contributions c
+                                ON c.SimchaId=s.Id
+                                GROUP BY s.Id, s.Name, s.Date
+                                ORDER BY s.Date DESC";
+
+            con.Open();
+            var reader = cmd.ExecuteReader();
+            while(reader.Read())
+            {
+                simchas.Add(new()
+                {
+                    Id = (int)reader["Id"],
+                    Name = (string)reader["Name"],
+                    Date = (DateTime)reader["Date"],
+                    Total=reader.GetOrNull<decimal>("Total"),
+                    ContributorCount=reader.GetOrNull<int>("ContributorCount")
+                });
+            }
+            return simchas;
+        }
+
+        public int GetAmmountOfPeopleInDB()
+        {
+            SqlConnection con = new(_connection);
+            var cmd = con.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*) as PeopleCount FROM People";
+            con.Open();
+            var reader = cmd.ExecuteReader();
+            if(!reader.Read())
+            {
+                return 0;
+            }
+
+            return reader.GetOrNull<int>("PeopleCount");
+        }
+
     }
 
     public static class ReaderExtensions
@@ -151,3 +327,4 @@ namespace SimchaFundHw.Data
         }
     }
 }
+
