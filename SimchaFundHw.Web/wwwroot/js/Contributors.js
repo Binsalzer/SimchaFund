@@ -10,13 +10,13 @@ $(() => {
         depositModal.show()
         const row = $(this)
         const name = row.attr('data-contribname')
+        const id = row.attr('data-contribid')
+        $('#deposit-modal').attr('value', id)
+
         const title = $('#deposit-modal').find('.modal-title')
         title.append(name)
-        console.log(name)
-        const id = row.attr('data-contribid')
-        $('#deposit-modal').setAttribute('value', id)
-        
-        console.log(id)
+
+
     })
 
 

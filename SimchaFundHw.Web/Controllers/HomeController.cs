@@ -18,5 +18,10 @@ namespace SimchaFundHw.Web.Controllers
             return View(vm);
         }
 
+        public IActionResult Contributions(int simchaId)
+        {
+            return View();
+        }
+
     }
 }

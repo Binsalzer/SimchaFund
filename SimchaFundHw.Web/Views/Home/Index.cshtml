@@ -24,7 +24,7 @@
                 @foreach (Simcha s in Model.Simchas)
                 {
                     <tr>
-                        <td><a class="btn btn-primary" href="/simchas/contributions?simchaid=3060">Contributions</a> </td>
+                        <td><a class="btn btn-primary" href="/simchas/contributions?simchaid=@s.Id">Contributions</a> </td>
                         <td>@s.Name</td>
                         <td>
                             @s.ContributorCount / @Model.TotalPeopleInDataBaseCount
