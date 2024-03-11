@@ -420,7 +420,7 @@ namespace SimchaFundHw.Data
 
             foreach (Contribution contribution in contributions)
             {
-                var match = GetContributionInfoBySimchaId(id).First(c => c.PersonId == contribution.PersonId);
+                var match = GetContributionInfoBySimchaId(id).FirstOrDefault(c => c.PersonId == contribution.PersonId);
                 if (match != null)
                 {
                     contribution.Amount = match.Amount;
