@@ -11,15 +11,15 @@ $(() => {
         const row = $(this)
         const name = row.attr('data-contribname')
         const id = row.attr('data-contribid')
-        $('#deposit-modal').attr('value', id)
-
+        $('personId').attr('value',id)
+        console.log(id)
         const title = $('#deposit-modal').find('.modal-title')
-        title.append(name)
+        title.text(name)
 
 
     })
 
-
+    
 
 
 
