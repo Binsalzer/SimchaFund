@@ -48,6 +48,16 @@ namespace SimchaFundHw.Data
         public int ContributorCount { get; set; }
     }
 
+    public class Contribution
+    {
+        public bool Contribute { get; set; }
+        public string Name { get; set; }
+        public int PersonId { get; set; }
+        public decimal Balance { get; set; }
+        public bool AlwaysInclude { get; set; }
+        public decimal Amount { get; set; }
+    }
+
     public class Manager
     {
         private string _connection;
@@ -264,13 +274,38 @@ namespace SimchaFundHw.Data
             }
             return reader.GetOrNull<decimal>("Total");
         }
+
         public decimal GetTotalBalanceForFund()
         {
             return GetTotalOfAllDeposits() - GetTotalOfAllContributions();
         }
 
+        public List<Simcha> GetBasicSimchaInfo()
+        {
+            List<Simcha> simchas = new();
+            SqlConnection con = new(_connection);
+            var cmd = con.CreateCommand();
+            cmd.CommandText = @"SELECT * FROM Simcha       
+                                ORDER BY Date DESC";
+            con.Open();
+            var reader = cmd.ExecuteReader();
+            while(reader.Read())
+            {
+                simchas.Add(new()
+                {
+                    Id = (int)reader["id"],
+                    Name = (string)reader["Name"],
+                    Date = (DateTime)reader["Date"],
+                    Total = 0,
+                    ContributorCount = 0
+                }); 
+            }
+            return simchas;
+        }
+
         public List<Simcha> GetAllSimchas()
         {
+            var simpleSimchas = GetBasicSimchaInfo();
             List<Simcha> simchas = new();
             SqlConnection con = new(_connection);
             var cmd = con.CreateCommand();
@@ -293,7 +328,28 @@ namespace SimchaFundHw.Data
                     ContributorCount=reader.GetOrNull<int>("ContributorCount")
                 });
             }
-            return simchas;
+
+            List<Simcha> final = new();
+       
+            foreach(Simcha ss in simpleSimchas)
+            {
+                bool added = false;
+                foreach (Simcha s in simchas)
+                {
+                    
+                    if(s.Id==ss.Id)
+                    {
+                        final.Add(s);
+                        added = true;
+                    }
+                }
+                if(!added)
+                {
+                    final.Add(ss);
+                }
+            }
+
+            return final;
         }
 
         public int GetAmmountOfPeopleInDB()
@@ -309,6 +365,70 @@ namespace SimchaFundHw.Data
             }
 
             return reader.GetOrNull<int>("PeopleCount");
+        }
+
+        public void AddSimcha(DateTime date, string name)
+        {
+            SqlConnection con = new(_connection);
+            var cmd = con.CreateCommand();
+            cmd.CommandText = @"INSERT INTO Simcha
+                                VALUES(@date, @name)";
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@name", name);
+            con.Open();
+            cmd.ExecuteNonQuery();
+        }
+
+        public List<Contribution> GetContributionInfoBySimchaId(int id)
+        {
+            List<Contribution> contributions = new();
+            SqlConnection con = new(_connection);
+            var cmd = con.CreateCommand();
+            cmd.CommandText = @"SELECT p.Id as 'PersonId', c.Ammount FROM Simcha s
+                                JOIN Contributions c
+                                On s.Id=c.SimchaId
+                                JOIN People p
+                                ON p.Id=C.PersonId
+                                WHERE SimchaId = @id";
+            cmd.Parameters.AddWithValue("@id", id);
+            con.Open();
+            var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                contributions.Add(new()
+                {
+                    PersonId = (int)reader["PersonId"],
+                    Amount = (decimal)reader["Ammount"]
+                });
+            }
+            return contributions;
+        }
+
+        public List<Contribution> GetContributionsById(int id)
+        {
+            List<Contribution> contributions = new();
+            foreach (Person p in GetPeopleInfo())
+            {
+                contributions.Add(new()
+                {
+                    Name = $"{p.FirstName} {p.LastName}",
+                    Balance = p.Balance,
+                    AlwaysInclude = p.AlwaysInclude,
+                    PersonId = p.Id
+                });
+            }
+
+            foreach (Contribution contribution in contributions)
+            {
+                var match = GetContributionInfoBySimchaId(id).First(c => c.PersonId == contribution.PersonId);
+                if (match != null)
+                {
+                    contribution.Amount = match.Amount;
+                    contribution.Contribute = true;
+                }
+            }
+
+            return contributions;
         }
 
     }

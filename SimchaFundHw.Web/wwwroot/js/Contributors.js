@@ -11,7 +11,7 @@ $(() => {
         const row = $(this)
         const name = row.attr('data-contribname')
         const id = row.attr('data-contribid')
-        $('personId').attr('value',id)
+        $('#deposit-id').val(id)
         console.log(id)
         const title = $('#deposit-modal').find('.modal-title')
         title.text(name)
